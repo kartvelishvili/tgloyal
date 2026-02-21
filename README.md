@@ -59,11 +59,23 @@ npm run build
 3. Copy your Project URL and anon/public API key
 
 ### 2. Update Environment Variables
-Edit `src/lib/customSupabaseClient.js` with your credentials:
-```javascript
-const SUPABASE_URL = 'YOUR_PROJECT_URL';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+Create a `.env` file in the root directory (copy from `.env.example`):
+
+```bash
+cp .env.example .env
 ```
+
+Edit `.env` with your Supabase credentials:
+```env
+VITE_SUPABASE_URL=YOUR_PROJECT_URL
+VITE_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+```
+
+Or use the existing defaults:
+- URL: `https://qcjpsalbhdmssqxfwqgw.supabase.co`
+- Anon Key: (see `.env.example`)
+
+**Note:** Environment variables are prefixed with `VITE_` to be accessible in the browser.
 
 ### 3. Run SQL Migration
 1. Open **SQL Editor** in Supabase Dashboard
@@ -140,7 +152,32 @@ tglegal/
 - Delete admins (except default super admin)
 - Supabase sync with localStorage fallback
 
-## 🛡️ Security Notes
+## � Deployment (Vercel/Netlify)
+
+### Required Settings:
+
+**Framework:** Vite  
+**Node Version:** 22.x (or 18.x+)  
+**Root Directory:** `./`  
+**Build Command:** `npm run build` (default)  
+**Output Directory:** `dist` (default)  
+
+### ⚡ Environment Variables (Important!)
+
+Add these in your hosting dashboard (e.g., Vercel → Settings → Environment Variables):
+
+```
+VITE_SUPABASE_URL=https://qcjpsalbhdmssqxfwqgw.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjanBzYWxiaGRtc3NxeGZ3cWd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2ODcxMjYsImV4cCI6MjA4NzI2MzEyNn0.rXt6nLOfp8Nq0ko3SaXouip7YzcZPisqyv-0aQCxFOY
+```
+
+**⚠️ Without these variables, Supabase features won't work!** (Admin panel will work with localStorage fallback only)
+
+### Custom Domain
+- Domain: `tgloyal.ge`
+- Ensure DNS is configured (A/CNAME records pointing to your hosting provider)
+
+## �🛡️ Security Notes
 
 - Row Level Security (RLS) enabled on all Supabase tables
 - Passwords stored in plain text (⚠️ **Use bcrypt/Argon2 for production!**)
