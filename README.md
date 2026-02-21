@@ -151,7 +151,17 @@ tglegal/
 - Role-based access (super admin / admin)
 - Delete admins (except default super admin)
 - Supabase sync with localStorage fallback
-
+### Settings & Contact Info Management
+- **Contact Information Editor**
+  - Phone, email, address, working hours
+  - Bilingual support (Georgian/English)
+  - Real-time updates across all contact sections
+  - Syncs with all design versions (V1, V2, V3)
+- **Cache Management**
+  - Clear all localStorage cache (translations, social links, contact info, section versions, leads)
+  - Preserves admin credentials
+  - Confirmation dialog for safety
+  - Auto-reload after clearing
 ## � Deployment (Vercel/Netlify)
 
 ### Required Settings:
