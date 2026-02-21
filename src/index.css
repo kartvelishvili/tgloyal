@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Georgia&family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "BPG Glaho WEB", sans-serif;
+  @apply bg-white text-gray-900;
+}
+
+h1, h2, h3, h4, h5, h6, button, .font-caps {
+  font-family: "BPG WEB 002 Caps", sans-serif;
+}
+
+@layer base {
+  :root {
+    --primary-blue: #1a3a52;
+    --gold-accent: #d4af37;
+    --light-gray: #f5f5f5;
+  }
+}
+
+@layer utilities {
+  .section-padding {
+    @apply py-16 px-4 md:py-24;
+  }
+}
