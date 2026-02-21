@@ -20,8 +20,18 @@ const ADMINS_STORAGE_KEY = 'tglegal_admins';
 const LEADS_STORAGE_KEY = 'tglegal_leads';
 const SOCIAL_LINKS_STORAGE_KEY = 'tglegal_social_links';
 const FOOTER_HTML_STORAGE_KEY = 'tglegal_footer_html';
+const CONTACT_INFO_STORAGE_KEY = 'tglegal_contact_info';
 
 const DEFAULT_ADMIN = { email: 'qartvela.ge@gmial.com', password: 'Qartvela2786', name: 'მთავარი ადმინი', role: 'super', createdAt: Date.now() };
+
+const DEFAULT_CONTACT_INFO = {
+  phone: '+995 XXX XXX XXX',
+  email: 'info@gegiadze.ge',
+  address: 'თბილისი, საქართველო',
+  addressEn: 'Tbilisi, Georgia',
+  hours: 'ორშ-პარ: 9:00-18:00',
+  hoursEn: 'Mon-Fri: 9:00-18:00'
+};
 
 const DEFAULT_SOCIAL_LINKS = [
   { id: 'default-1', type: 'facebook', label: 'Facebook', url: '', icon: 'Facebook', sort_order: 1, visible: true },
@@ -90,6 +100,19 @@ function getFooterHtml() {
 function saveFooterHtmlLocal(html) {
   localStorage.setItem(FOOTER_HTML_STORAGE_KEY, html);
   window.dispatchEvent(new CustomEvent('footer-html-updated', { detail: html }));
+}
+
+function getContactInfo() {
+  try {
+    const saved = localStorage.getItem(CONTACT_INFO_STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return DEFAULT_CONTACT_INFO;
+}
+
+function saveContactInfoLocal(contactInfo) {
+  localStorage.setItem(CONTACT_INFO_STORAGE_KEY, JSON.stringify(contactInfo));
+  window.dispatchEvent(new CustomEvent('contact-info-updated', { detail: contactInfo }));
 }
 
 const SECTION_LABELS = {
@@ -960,6 +983,153 @@ const SocialLinksPanel = () => {
 };
 
 /* ═══════════════════════════════════════════
+   SETTINGS PANEL (Contact Info & Cache Management)
+   ═══════════════════════════════════════════ */
+const SettingsPanel = () => {
+  const [contactInfo, setContactInfo] = useState(getContactInfo);
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null);
+
+  const handleSave = () => {
+    setSaving(true);
+    saveContactInfoLocal(contactInfo);
+    setSaveStatus('success');
+    setTimeout(() => { setSaving(false); setSaveStatus(null); }, 2000);
+  };
+
+  const handleClearCache = () => {
+    if (!window.confirm('ნამდვილად გნებავთ ყველა cache-ის გასუფთავება?\n\nეს წაშლის:\n- თარგმნების ცვლილებებს\n- სოციალური ბმულებს\n- ფუტერის HTML-ს\n- საკონტაქტო ინფორმაციას\n- სექციების ვერსიებს\n- ლიდებს\n\n⚠️ ადმინების მონაცემები არ წაიშლება')) return;
+    
+    try {
+      localStorage.removeItem(TRANSLATIONS_STORAGE_KEY);
+      localStorage.removeItem(SOCIAL_LINKS_STORAGE_KEY);
+      localStorage.removeItem(FOOTER_HTML_STORAGE_KEY);
+      localStorage.removeItem(CONTACT_INFO_STORAGE_KEY);
+      localStorage.removeItem('tglegal_section_versions');
+      localStorage.removeItem(LEADS_STORAGE_KEY);
+      
+      window.dispatchEvent(new CustomEvent('translations-updated', { detail: defaultTranslations }));
+      window.dispatchEvent(new CustomEvent('social-links-updated', { detail: DEFAULT_SOCIAL_LINKS }));
+      window.dispatchEvent(new CustomEvent('footer-html-updated', { detail: '' }));
+      window.dispatchEvent(new CustomEvent('contact-info-updated', { detail: DEFAULT_CONTACT_INFO }));
+      
+      setContactInfo(DEFAULT_CONTACT_INFO);
+      
+      alert('✅ Cache წაშლილია!\n\nგვერდი გადატვირთვის შემდეგ ყველა ცვლილება აღდგება საწყის მდგომარეობაში.');
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      alert('❌ შეცდომა cache-ის წაშლისას: ' + err.message);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+          <Shield size={20} className="text-[#d4af37]" />
+          პარამეტრები
+        </h2>
+      </div>
+
+      {/* Contact Info Section */}
+      <div className="bg-[#0e0e0e] rounded-xl border border-[#161616] p-5 mb-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-white font-semibold text-sm flex items-center gap-2">
+            <Phone size={16} className="text-[#d4af37]" />
+            საკონტაქტო ინფორმაცია
+          </h3>
+          <button onClick={handleSave} disabled={saving}
+            className={`px-4 py-2 text-xs rounded-lg transition flex items-center gap-1.5 font-bold shadow-sm ${
+              saveStatus === 'success' ? 'bg-green-500/15 text-green-400 border border-green-500/20' :
+              'bg-[#d4af37] text-black hover:bg-[#c4a030] shadow-[#d4af37]/10'
+            }`}>
+            {saving ? 'ინახება...' : saveStatus === 'success' ? <><Check size={12} /> შენახულია!</> : <><Save size={12} /> შენახვა</>}
+          </button>
+        </div>
+
+        <div className="bg-[#d4af37]/5 border border-[#d4af37]/10 rounded-lg p-3 mb-4">
+          <p className="text-[#d4af37]/70 text-[11px]">
+            ეს ინფორმაცია გამოჩნდება საიტის კონტაქტის სექციაში (ყველა 3 დიზაინ ვერსიაში)
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[#666] text-[10px] font-medium mb-1.5 uppercase tracking-wider">ტელეფონი</label>
+              <input value={contactInfo.phone} onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                className={inputClass} placeholder="+995 XXX XXX XXX" />
+            </div>
+            <div>
+              <label className="block text-[#666] text-[10px] font-medium mb-1.5 uppercase tracking-wider">ელფოსტა</label>
+              <input type="email" value={contactInfo.email} onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                className={inputClass} placeholder="info@gegiadze.ge" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[#666] text-[10px] font-medium mb-1.5 uppercase tracking-wider">მისამართი (ქართული)</label>
+              <input value={contactInfo.address} onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })}
+                className={inputClass} placeholder="თბილისი, საქართველო" />
+            </div>
+            <div>
+              <label className="block text-[#666] text-[10px] font-medium mb-1.5 uppercase tracking-wider">მისამართი (ინგლისური)</label>
+              <input value={contactInfo.addressEn} onChange={(e) => setContactInfo({ ...contactInfo, addressEn: e.target.value })}
+                className={inputClass} placeholder="Tbilisi, Georgia" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[#666] text-[10px] font-medium mb-1.5 uppercase tracking-wider">სამუშაო საათები (ქართული)</label>
+              <input value={contactInfo.hours} onChange={(e) => setContactInfo({ ...contactInfo, hours: e.target.value })}
+                className={inputClass} placeholder="ორშ-პარ: 9:00-18:00" />
+            </div>
+            <div>
+              <label className="block text-[#666] text-[10px] font-medium mb-1.5 uppercase tracking-wider">სამუშაო საათები (ინგლისური)</label>
+              <input value={contactInfo.hoursEn} onChange={(e) => setContactInfo({ ...contactInfo, hoursEn: e.target.value })}
+                className={inputClass} placeholder="Mon-Fri: 9:00-18:00" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Cache Management */}
+      <div className="bg-[#0e0e0e] rounded-xl border border-[#161616] p-5">
+        <h3 className="text-white font-semibold text-sm mb-4 flex items-center gap-2">
+          <RotateCcw size={16} className="text-orange-400" />
+          Cache-ის მართვა
+        </h3>
+
+        <div className="bg-orange-500/5 border border-orange-500/10 rounded-lg p-4 mb-4">
+          <p className="text-orange-400/80 text-xs mb-2">
+            <strong>⚠️ ყურადღება:</strong> Cache-ის გასუფთავება წაშლის ყველა ცვლილებას რომელიც localStorage-ში ინახება:
+          </p>
+          <ul className="text-orange-400/60 text-[11px] space-y-1 ml-4">
+            <li>• თარგმანების ცვლილებები</li>
+            <li>• სოციალური ბმულები</li>
+            <li>• ფუტერის HTML კოდი</li>
+            <li>• საკონტაქტო ინფორმაცია</li>
+            <li>• სექციების დიზაინის ვერსიები</li>
+            <li>• შეტყობინებები (ლიდები)</li>
+          </ul>
+          <p className="text-orange-400/60 text-[11px] mt-2">
+            ✅ ადმინების მონაცემები <strong>არ წაიშლება</strong>
+          </p>
+        </div>
+
+        <button onClick={handleClearCache}
+          className="px-5 py-3 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 hover:border-orange-500/40 text-orange-400 text-sm font-bold rounded-lg transition flex items-center gap-2">
+          <Trash2 size={14} />
+          Cache-ის გასუფთავება
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════
    CONTENT EDITOR PANEL
    ═══════════════════════════════════════════ */
 const ContentEditorPanel = ({ editedTranslations, setEditedTranslations, onSave, onReset, saveStatus }) => {
@@ -1145,6 +1315,7 @@ const AdminDashboard = ({ session, onLogout }) => {
     { id: 'content', label: 'კონტენტი', icon: FileText },
     { id: 'design', label: 'დიზაინი', icon: Palette },
     { id: 'social', label: 'სოც. მედია', icon: Share2 },
+    { id: 'settings', label: 'პარამეტრები', icon: Shield },
     { id: 'leads', label: 'ლიდები', icon: MessageSquare, badge: leadsCount },
     { id: 'admins', label: 'ადმინები', icon: Users },
   ];
@@ -1231,6 +1402,7 @@ const AdminDashboard = ({ session, onLogout }) => {
           )}
           {activeTab === 'design' && <DesignManager />}
           {activeTab === 'social' && <SocialLinksPanel />}
+          {activeTab === 'settings' && <SettingsPanel />}
           {activeTab === 'leads' && <LeadsPanel />}
           {activeTab === 'admins' && <AdminsPanel currentSession={session} />}
         </div>

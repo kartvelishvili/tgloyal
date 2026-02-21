@@ -1,15 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Send, Check, ArrowRight, ArrowLeft, User, MessageCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/useLanguage';
 
+const CONTACT_INFO_STORAGE_KEY = 'tglegal_contact_info';
+
 const ContactV3 = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contactInfo, setContactInfo] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CONTACT_INFO_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { phone: '+995 XXX XXX XXX', email: 'info@gegiadze.ge', address: 'თბილისი, საქართველო', addressEn: 'Tbilisi, Georgia', hours: 'ორშ-პარ: 9:00-18:00', hoursEn: 'Mon-Fri: 9:00-18:00' };
+  });
+
+  useEffect(() => {
+    const handleUpdate = (e) => setContactInfo(e.detail);
+    window.addEventListener('contact-info-updated', handleUpdate);
+    return () => window.removeEventListener('contact-info-updated', handleUpdate);
+  }, []);
 
   const steps = [
     { label: t.contact.labels?.name || 'სახელი', icon: User },
@@ -41,11 +56,11 @@ const ContactV3 = () => {
     }, 1000);
   };
 
-  const contactInfo = [
-    { icon: Phone, value: '+995 XXX XXX XXX' },
-    { icon: Mail, value: 'info@gegiadze.ge' },
-    { icon: MapPin, value: t.contact.details?.addressValue || 'თბილისი' },
-    { icon: Clock, value: t.contact.details?.hoursValue || '10:00 - 18:00' },
+  const contactInfoData = [
+    { icon: Phone, value: contactInfo.phone },
+    { icon: Mail, value: contactInfo.email },
+    { icon: MapPin, value: language === 'ka' ? contactInfo.address : contactInfo.addressEn },
+    { icon: Clock, value: language === 'ka' ? contactInfo.hours : contactInfo.hoursEn },
   ];
 
   return (
@@ -73,7 +88,7 @@ const ContactV3 = () => {
             <div className="bg-[#1a3a52] rounded-2xl p-6 text-white">
               <h3 className="font-bold text-lg mb-6">{t.contact.infoTitle}</h3>
               <div className="space-y-5">
-                {contactInfo.map((info, i) => (
+                {contactInfoData.map((info, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center shrink-0">
                       <info.icon size={16} className="text-[#d4af37]" />

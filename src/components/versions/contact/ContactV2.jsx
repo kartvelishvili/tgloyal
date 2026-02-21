@@ -1,14 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import useLanguage from '@/hooks/useLanguage';
 
+const CONTACT_INFO_STORAGE_KEY = 'tglegal_contact_info';
+
 const ContactV2 = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [contactInfo, setContactInfo] = useState(() => {
+    try {
+      const saved = localStorage.getItem(CONTACT_INFO_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { phone: '+995 XXX XXX XXX', email: 'info@gegiadze.ge', address: 'თბილისი, საქართველო', addressEn: 'Tbilisi, Georgia', hours: 'ორშ-პარ: 9:00-18:00', hoursEn: 'Mon-Fri: 9:00-18:00' };
+  });
+
+  useEffect(() => {
+    const handleUpdate = (e) => setContactInfo(e.detail);
+    window.addEventListener('contact-info-updated', handleUpdate);
+    return () => window.removeEventListener('contact-info-updated', handleUpdate);
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -34,11 +49,11 @@ const ContactV2 = () => {
     }, 1000);
   };
 
-  const contactInfo = [
-    { icon: Phone, label: t.contact.details.phone, value: '+995 XXX XXX XXX' },
-    { icon: Mail, label: t.contact.details.email, value: 'info@gegiadze.ge' },
-    { icon: MapPin, label: t.contact.details.address, value: t.contact.details.addressValue },
-    { icon: Clock, label: t.contact.details.hours, value: t.contact.details.hoursValue },
+  const contactInfoData = [
+    { icon: Phone, label: t.contact.details.phone, value: contactInfo.phone },
+    { icon: Mail, label: t.contact.details.email, value: contactInfo.email },
+    { icon: MapPin, label: t.contact.details.address, value: language === 'ka' ? contactInfo.address : contactInfo.addressEn },
+    { icon: Clock, label: t.contact.details.hours, value: language === 'ka' ? contactInfo.hours : contactInfo.hoursEn },
   ];
 
   return (
@@ -66,7 +81,7 @@ const ContactV2 = () => {
           viewport={{ once: true }}
           className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12 max-w-5xl mx-auto"
         >
-          {contactInfo.map((info, i) => (
+          {contactInfoData.map((info, i) => (
             <div key={i} className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/10">
               <info.icon size={20} className="text-[#d4af37] shrink-0" />
               <div>
