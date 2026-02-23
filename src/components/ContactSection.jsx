@@ -3,19 +3,19 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/customSupabaseClient';
 import useLanguage from '../hooks/useLanguage';
-
-const CONTACT_INFO_STORAGE_KEY = 'tglegal_contact_info';
 
 const ContactSection = () => {
   const { toast } = useToast();
   const { t, language } = useLanguage();
-  const [contactInfo, setContactInfo] = useState(() => {
-    try {
-      const saved = localStorage.getItem(CONTACT_INFO_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return { phone: '+995 XXX XXX XXX', email: 'info@gegiadze.ge', address: 'თბილისი, საქართველო', addressEn: 'Tbilisi, Georgia', hours: 'ორშ-პარ: 9:00-18:00', hoursEn: 'Mon-Fri: 9:00-18:00' };
+  const [contactInfo, setContactInfo] = useState({
+    phone: '+995 XXX XXX XXX',
+    email: 'info@gegiadze.ge',
+    address: 'თბილისი, საქართველო',
+    addressEn: 'Tbilisi, Georgia',
+    hours: 'ორშ-პარ: 9:00-18:00',
+    hoursEn: 'Mon-Fri: 9:00-18:00'
   });
   const [formData, setFormData] = useState({
     name: '',
@@ -32,6 +32,24 @@ const ContactSection = () => {
     return () => window.removeEventListener('contact-info-updated', handleUpdate);
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadContactInfo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('contact_info')
+          .eq('id', 1)
+          .single();
+        if (!error && data?.contact_info && isMounted) {
+          setContactInfo((prev) => ({ ...prev, ...data.contact_info }));
+        }
+      } catch {}
+    };
+    loadContactInfo();
+    return () => { isMounted = false; };
+  }, []);
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -42,7 +60,7 @@ const ContactSection = () => {
   const handleFocus = (field) => setFocusedField(field);
   const handleBlur = () => setFocusedField(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.name || !formData.email || !formData.message) {
@@ -55,34 +73,32 @@ const ContactSection = () => {
     }
 
     setIsSubmitting(true);
-    
-    setTimeout(() => {
-      // Save lead to localStorage for admin panel
-      try {
-        const LEADS_STORAGE_KEY = 'tglegal_leads';
-        const existingLeads = JSON.parse(localStorage.getItem(LEADS_STORAGE_KEY) || '[]');
-        const newLead = {
-          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+
+    try {
+      const { error } = await supabase.from('leads').insert([
+        {
           name: formData.name,
           email: formData.email,
           phone: formData.phone || '',
           message: formData.message,
           read: false,
-          createdAt: Date.now(),
-        };
-        existingLeads.push(newLead);
-        localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(existingLeads));
-      } catch (err) {
-        // Silently fail storage
-      }
+        }
+      ]);
+      if (error) throw error;
 
       toast({
         title: t.contact.messages.successTitle,
         description: t.contact.messages.successDesc
       });
       setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (err) {
+      toast({
+        title: t.contact.messages.error,
+        description: t.contact.messages.error
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const contactInfoData = [

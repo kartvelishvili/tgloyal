@@ -32,6 +32,26 @@ CREATE TABLE IF NOT EXISTS public.footer_custom_html (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 4. Create site_settings table (single row)
+CREATE TABLE IF NOT EXISTS public.site_settings (
+  id INT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  translations JSONB DEFAULT '{}'::jsonb,
+  contact_info JSONB DEFAULT '{}'::jsonb,
+  section_versions JSONB DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Create leads table
+CREATE TABLE IF NOT EXISTS public.leads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT DEFAULT '',
+  message TEXT NOT NULL,
+  read BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ═══════════════════════════════════════════════════════════════
 -- Row Level Security Policies
 -- ═══════════════════════════════════════════════════════════════
@@ -40,6 +60,8 @@ CREATE TABLE IF NOT EXISTS public.footer_custom_html (
 ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.social_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.footer_custom_html ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
 -- Admins table policies (full access via anon key for admin panel)
 CREATE POLICY "admins_select" ON public.admins FOR SELECT USING (true);
@@ -58,6 +80,17 @@ CREATE POLICY "footer_html_select" ON public.footer_custom_html FOR SELECT USING
 CREATE POLICY "footer_html_insert" ON public.footer_custom_html FOR INSERT WITH CHECK (true);
 CREATE POLICY "footer_html_update" ON public.footer_custom_html FOR UPDATE USING (true);
 
+-- Site settings policies
+CREATE POLICY "site_settings_select" ON public.site_settings FOR SELECT USING (true);
+CREATE POLICY "site_settings_insert" ON public.site_settings FOR INSERT WITH CHECK (true);
+CREATE POLICY "site_settings_update" ON public.site_settings FOR UPDATE USING (true);
+
+-- Leads policies
+CREATE POLICY "leads_select" ON public.leads FOR SELECT USING (true);
+CREATE POLICY "leads_insert" ON public.leads FOR INSERT WITH CHECK (true);
+CREATE POLICY "leads_update" ON public.leads FOR UPDATE USING (true);
+CREATE POLICY "leads_delete" ON public.leads FOR DELETE USING (true);
+
 -- ═══════════════════════════════════════════════════════════════
 -- Default Data
 -- ═══════════════════════════════════════════════════════════════
@@ -75,4 +108,9 @@ INSERT INTO public.social_links (type, label, url, icon, sort_order) VALUES
 
 -- Default footer HTML (empty)
 INSERT INTO public.footer_custom_html (id, html_content) VALUES (1, '')
+ON CONFLICT (id) DO NOTHING;
+
+-- Default site settings row (empty JSON, app will merge defaults)
+INSERT INTO public.site_settings (id, translations, contact_info, section_versions)
+VALUES (1, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb)
 ON CONFLICT (id) DO NOTHING;

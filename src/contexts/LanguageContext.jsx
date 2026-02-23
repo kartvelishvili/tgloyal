@@ -1,10 +1,9 @@
 
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/customSupabaseClient';
 import { translations as defaultTranslations } from '../lib/translations';
 
 export const LanguageContext = createContext();
-
-const TRANSLATIONS_STORAGE_KEY = 'tglegal_translations_override';
 
 function deepMerge(target, source) {
   const output = { ...target };
@@ -18,29 +17,13 @@ function deepMerge(target, source) {
   return output;
 }
 
-function loadTranslations() {
-  try {
-    const saved = localStorage.getItem(TRANSLATIONS_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return {
-        ka: deepMerge(defaultTranslations.ka, parsed.ka || {}),
-        en: deepMerge(defaultTranslations.en, parsed.en || {}),
-      };
-    }
-  } catch {
-    // ignore
-  }
-  return defaultTranslations;
-}
-
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => {
     const savedLanguage = localStorage.getItem('language');
     return savedLanguage || 'ka';
   });
 
-  const [translations, setTranslations] = useState(loadTranslations);
+  const [translations, setTranslations] = useState(defaultTranslations);
 
   useEffect(() => {
     localStorage.setItem('language', language);
@@ -59,6 +42,27 @@ export const LanguageProvider = ({ children }) => {
     };
     window.addEventListener('translations-updated', handleUpdate);
     return () => window.removeEventListener('translations-updated', handleUpdate);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadTranslations = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('translations')
+          .eq('id', 1)
+          .single();
+        if (!error && data?.translations && isMounted) {
+          setTranslations({
+            ka: deepMerge(defaultTranslations.ka, data.translations.ka || {}),
+            en: deepMerge(defaultTranslations.en, data.translations.en || {}),
+          });
+        }
+      } catch {}
+    };
+    loadTranslations();
+    return () => { isMounted = false; };
   }, []);
 
   const toggleLanguage = () => {

@@ -2,11 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Facebook, Linkedin, Instagram, Youtube, Mail, Phone, Globe, Send, Share2, MessageSquare } from 'lucide-react';
+import { supabase } from '@/lib/customSupabaseClient';
 import useLanguage from '../hooks/useLanguage';
 
 const ICON_MAP = { Facebook, Linkedin, Instagram, Youtube, Mail, Phone, Globe, Send, Share2, MessageSquare };
-const SOCIAL_LINKS_STORAGE_KEY = 'tglegal_social_links';
-const FOOTER_HTML_STORAGE_KEY = 'tglegal_footer_html';
 const DEFAULT_SOCIAL_LINKS = [
   { id: 'default-1', type: 'facebook', label: 'Facebook', url: '', icon: 'Facebook', sort_order: 1, visible: true },
   { id: 'default-2', type: 'linkedin', label: 'LinkedIn', url: '', icon: 'Linkedin', sort_order: 2, visible: true },
@@ -15,12 +14,8 @@ const DEFAULT_SOCIAL_LINKS = [
 
 const Footer = () => {
   const { t } = useLanguage();
-  const [socialLinks, setSocialLinks] = useState(() => {
-    try { const s = localStorage.getItem(SOCIAL_LINKS_STORAGE_KEY); return s ? JSON.parse(s) : DEFAULT_SOCIAL_LINKS; } catch { return DEFAULT_SOCIAL_LINKS; }
-  });
-  const [footerHtml, setFooterHtml] = useState(() => {
-    try { return localStorage.getItem(FOOTER_HTML_STORAGE_KEY) || ''; } catch { return ''; }
-  });
+  const [socialLinks, setSocialLinks] = useState(DEFAULT_SOCIAL_LINKS);
+  const [footerHtml, setFooterHtml] = useState('');
 
   useEffect(() => {
     const handleLinksUpdate = (e) => setSocialLinks(e.detail);
@@ -31,6 +26,35 @@ const Footer = () => {
       window.removeEventListener('social-links-updated', handleLinksUpdate);
       window.removeEventListener('footer-html-updated', handleHtmlUpdate);
     };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadFooterData = async () => {
+      try {
+        const { data: linksData, error: linksError } = await supabase
+          .from('social_links')
+          .select('*')
+          .order('sort_order');
+        if (!linksError && linksData && isMounted) {
+          setSocialLinks(linksData);
+        }
+      } catch {}
+
+      try {
+        const { data: htmlData, error: htmlError } = await supabase
+          .from('footer_custom_html')
+          .select('*')
+          .eq('id', 1)
+          .single();
+        if (!htmlError && htmlData && isMounted) {
+          setFooterHtml(htmlData.html_content || '');
+        }
+      } catch {}
+    };
+
+    loadFooterData();
+    return () => { isMounted = false; };
   }, []);
 
   const visibleLinks = socialLinks.filter(l => l.visible !== false).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));

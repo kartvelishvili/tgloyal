@@ -2,7 +2,7 @@
  * Section Version Registry
  * 
  * Central registry mapping section IDs to available design versions.
- * Active versions are stored in localStorage.
+ * Active versions are stored in memory and hydrated from Supabase.
  * Default (V1) = the original component, so the public site is unchanged unless admin picks a different version.
  */
 
@@ -43,36 +43,38 @@ const WhyUsV3 = lazy(() => import('@/components/versions/whyUs/WhyUsV3'));
 const ContactV2 = lazy(() => import('@/components/versions/contact/ContactV2'));
 const ContactV3 = lazy(() => import('@/components/versions/contact/ContactV3'));
 
-/* ─── Storage ─── */
-export const VERSIONS_STORAGE_KEY = 'tglegal_section_versions';
+/* ─── In-memory active versions cache ─── */
+let activeVersionsCache = {};
 
 export function getActiveVersions() {
-  try {
-    const saved = localStorage.getItem(VERSIONS_STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch {}
-  return {}; // empty = all V1
+  return activeVersionsCache;
+}
+
+export function setActiveVersions(next) {
+  activeVersionsCache = next || {};
+  window.dispatchEvent(new CustomEvent('section-versions-updated'));
 }
 
 export function setActiveVersion(sectionId, versionId) {
-  const current = getActiveVersions();
+  const current = { ...activeVersionsCache };
   if (versionId === 'v1') {
-    delete current[sectionId]; // V1 = default, no need to store
+    delete current[sectionId];
   } else {
     current[sectionId] = versionId;
   }
-  localStorage.setItem(VERSIONS_STORAGE_KEY, JSON.stringify(current));
-  // Dispatch event so HomePage can react in real-time
+  activeVersionsCache = current;
   window.dispatchEvent(new CustomEvent('section-versions-updated'));
+  return current;
 }
 
 export function rollbackVersion(sectionId) {
-  setActiveVersion(sectionId, 'v1');
+  return setActiveVersion(sectionId, 'v1');
 }
 
 export function rollbackAll() {
-  localStorage.removeItem(VERSIONS_STORAGE_KEY);
+  activeVersionsCache = {};
   window.dispatchEvent(new CustomEvent('section-versions-updated'));
+  return activeVersionsCache;
 }
 
 /* ─── Registry ─── */
@@ -307,9 +309,16 @@ export const sectionRegistry = {
  * Get the active component for a section.
  * Returns the V1 component if no version is explicitly set.
  */
-export function getActiveComponent(sectionId) {
-  const activeVersions = getActiveVersions();
+export function getActiveComponent(sectionId, activeVersionsOverride) {
+  const activeVersions = activeVersionsOverride || getActiveVersions();
   const versionId = activeVersions[sectionId] || 'v1';
+  const section = sectionRegistry[sectionId];
+  if (!section) return null;
+  const version = section.versions.find(v => v.id === versionId);
+  return version ? version.component : section.versions[0].component;
+}
+
+export function getComponentForVersion(sectionId, versionId) {
   const section = sectionRegistry[sectionId];
   if (!section) return null;
   const version = section.versions.find(v => v.id === versionId);

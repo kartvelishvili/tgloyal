@@ -4,7 +4,8 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Toaster } from '@/components/ui/toaster';
 import useLanguage from '@/hooks/useLanguage';
-import { sectionRegistry, getActiveVersions, getActiveComponent } from '@/lib/sectionVersionRegistry';
+import { supabase } from '@/lib/customSupabaseClient';
+import { getActiveVersions, getActiveComponent, setActiveVersions } from '@/lib/sectionVersionRegistry';
 
 // The order of sections on the page
 const SECTION_ORDER = [
@@ -19,7 +20,7 @@ const SECTION_ORDER = [
 ];
 
 const SectionRenderer = ({ sectionId, activeVersions }) => {
-  const Component = getActiveComponent(sectionId);
+  const Component = getActiveComponent(sectionId, activeVersions);
   if (!Component) return null;
 
   // V1 components are eagerly imported, V2/V3 are lazy
@@ -37,17 +38,35 @@ const SectionRenderer = ({ sectionId, activeVersions }) => {
 
 const HomePage = () => {
   const { t } = useLanguage();
-  const [activeVersions, setActiveVersions] = useState(getActiveVersions);
+  const [activeVersions, setActiveVersionsState] = useState(getActiveVersions);
 
   // Listen for version changes from admin panel
   useEffect(() => {
-    const handler = () => setActiveVersions(getActiveVersions());
+    const handler = () => setActiveVersionsState(getActiveVersions());
     window.addEventListener('section-versions-updated', handler);
-    window.addEventListener('storage', handler);
     return () => {
       window.removeEventListener('section-versions-updated', handler);
-      window.removeEventListener('storage', handler);
     };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadVersions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('section_versions')
+          .eq('id', 1)
+          .single();
+        if (!error && data && isMounted) {
+          const next = data.section_versions || {};
+          setActiveVersions(next);
+          setActiveVersionsState(next);
+        }
+      } catch {}
+    };
+    loadVersions();
+    return () => { isMounted = false; };
   }, []);
 
   return (
